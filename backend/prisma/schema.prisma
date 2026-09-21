@@ -1,0 +1,187 @@
+generator client {
+  provider = "mysql"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ AUTHENTICATION ============
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("user")
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  transactions    Transaction[]
+  budgets         Budget[]
+  profiles        Profile[]
+  reportExports   ReportExport[]
+  TelegramSetting TelegramSetting?
+  WhatsappSetting WhatsappSetting?
+  Account         Account[]
+  MonthlySummary  MonthlySummary[]
+}
+
+// ============ PROFILE & SETTINGS ============
+
+model Profile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  avatarUrl            String?
+  currency             String   @default("IDR")
+  telegramId           String?  @unique
+  telegramUsername     String?
+  notificationsEnabled Boolean  @default(true)
+  dailyReminder        Boolean  @default(true)
+  budgetAlerts         Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ TELEGRAM SETTINGS (legacy, kept for compat) ============
+
+model TelegramSetting {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  isConnected Boolean   @default(false)
+  chatId      String?
+  lastSentAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ WHATSAPP SETTINGS ============
+
+model WhatsappSetting {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  isConnected Boolean   @default(false)
+  phoneNumber String?
+  lastSentAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ CATEGORIES ============
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  type      String // "income" or "expense"
+  color     String // hex color for UI, e.g., "#10b981"
+  icon      String // Lucide icon name, e.g., "Wallet"
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  // Relations
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+// ============ TRANSACTIONS ============
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String // "income" or "expense"
+  amount      Decimal // stored in IDR (base unit, e.g., 500000 = Rp 5.000)
+  categoryId  String?
+  description String
+  date        DateTime
+  account     String // e.g., "Bank BCA", "GoPay", "Tunai"
+  metadata    Json? // optional: source, paymentId, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+}
+
+// ============ ACCOUNTS ============
+
+model Account {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String // e.g., "Bank BCA", "GoPay", "Tunai / Dompet"
+  type      String // "bank", "e-wallet", "cash"
+  balance   Decimal // current balance in IDR
+  currency  String   @default("IDR")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ BUDGETS ============
+
+model Budget {
+  id          String   @id @default(cuid())
+  userId      String
+  categoryId  String? // null = general budget, otherwise specific category
+  month       String // "YYYY-MM" format
+  limitAmount Decimal // budget limit in IDR
+  spentAmount Decimal  @default(0) // calculated from transactions
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Unique constraint: one budget per user per category per month
+  @@unique([userId, categoryId, month])
+}
+
+// ============ MONTHLY SUMMARIES ============
+
+model MonthlySummary {
+  id               String   @id @default(cuid())
+  userId           String
+  month            String // "YYYY-MM" format
+  totalIncome      Decimal  @default(0)
+  totalExpense     Decimal  @default(0)
+  netBalance       Decimal  @default(0)
+  transactionCount Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+}
+
+// ============ REPORT EXPORT LOG ============
+
+model ReportExport {
+  id          String    @id @default(cuid())
+  userId      String
+  month       String? // "YYYY-MM" or null for custom range
+  dateFrom    DateTime?
+  dateTo      DateTime?
+  format      String // "csv" or "pdf"
+  status      String // "pending", "completed", "failed"
+  fileUrl     String? // URL to downloaded file
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

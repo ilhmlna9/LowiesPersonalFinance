@@ -1,0 +1,37 @@
+{
+  "name": "lowies-backend",
+  "version": "1.0.0",
+  "description": "Lowies Personal Finance - Node.js + Express.js + MySQL + Prisma ORM backend",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "db:push": "prisma push",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate make",
+    "test": "jest"
+  },
+  "keywords": "nodejs, express, prisma, mysql, personal-finance, saas",
+  "author": "Lowies Personal Finance",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.5.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "stripe": "^17.7.0",
+    "winston": "^3.14.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "prisma": "^5.21.1",
+    "supertest": "^7.0.0"
+  }
+}
